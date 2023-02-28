@@ -1,144 +1,168 @@
-#coding=utf8
-#Wei Guannan <kiss.kraks@gmail.com>
-
-import copy
 import random
-from colorama import Fore, Back
 
-def reduceLineLeft(xs): 
-    def aux(acc, y):
-        if len(acc) == 0: acc.append(y)
-        elif acc[len(acc)-1] == y:
-            acc[len(acc)-1] = y * 2
-            acc.append(0)
-        else: acc.append(y)
-        return acc
-    res = filter(lambda x: x!=0, reduce(aux, filter(lambda x: x!=0, xs), []))
-    res.extend([0 for i in range(0, len(xs)-len(res))])
-    return res
+#return 1 EMPTY, RANDOM positions to put a value
 
-def reduceLineRight(xs):
-    return reduceLineLeft(xs[::-1])[::-1]
+# def getPosition(grid):
+#     result = dict()
+#     result["row"] = random.randint(0,3)
+#     result["column"] = random.randint(0,3)
+#     if grid[result["row"]][result["column"]]==0:
+#         return result
+#     else:
+#         return getPosition(grid)
+def getPosition(grid):
+    possibleVacancies = []
+    for i in range(0,4):
+        for j in range(0,4):
+            if(grid[i][j] == 0):
+                result = dict()
+                result["row"] = i
+                result["column"] = j
+                possibleVacancies.append(result)
+    return possibleVacancies[random.randint(0, len(possibleVacancies)-1)]
 
-def reduceLeft(a):
-    return map(reduceLineLeft, a)
+def insertValue(grid):
+    startPosition = getPosition(grid)
+    grid[startPosition["row"]][startPosition["column"]] = 2 if random.randint(0, 100) % 2 == 0 else 4
 
-def reduceRight(a):
-    return map(reduceLineRight, a)
+def startGame(grid):
+    for x in range(2):
+        insertValue(grid)
 
-def reduceUp(a):
-    return rotate(reduceLeft(rotate(a)))
+def display(grid):
+    for row in grid:
+        print(row)
+    print("============")
 
-def reduceDown(a):
-    return rotate(reduceRight(rotate(a)))
+def reverse(row):
+    temp = []
+    for i in range(3, -1, -1):
+        temp.append(row[i])
+    return temp
 
-def rotate(a):
-    def auxset(i, j): b[j][i] = a[i][j]
-    b = newEmpty(len(a))
-    map(lambda i: map(lambda j: auxset(i, j), range(0, len(a[i]))), range(0, len(a)))
-    return b
+def mergeLeftPos(row):
+    newRow = [0,0,0,0]
+    newRowIndex = 0
+    for i in row:
+        if i != 0:
+            newRow[newRowIndex] = i
+            newRowIndex+=1
+    return newRow
+def mergeLeftCalc(row):
+    for i in range(0,3):
+        if row[i]!=0:
+            if row[i] == row[i+1]:
+                row[i]*=2
+                row[i+1]=0
+                mergeLeftPos(row)
+    return mergeLeftPos(row)
+def mergeLeft(row):
+    return mergeLeftCalc(mergeLeftPos(row))
 
-def prettyPrint(a):
-    def color(x):
-        if x == 0:    return Fore.RESET + Back.RESET
-        if x == 2:    return Fore.RED + Back.RESET
-        if x == 4:    return Fore.GREEN + Back.RESET
-        if x == 8:    return Fore.YELLOW + Back.RESET
-        if x == 16:   return Fore.BLUE + Back.RESET
-        if x == 32:   return Fore.MAGENTA + Back.RESET
-        if x == 64:   return Fore.CYAN + Back.RESET
-        if x == 128:  return Fore.RED + Back.BLACK
-        if x == 256:  return Fore.GREEN + Back.BLACK
-        if x == 512:  return Fore.YELLOW + Back.BLACK
-        if x == 1024: return Fore.BLUE + Back.BLACK
-        if x == 2048: return Fore.MAGENTA + Back.BLACK
-        if x == 4096: return Fore.CYAN + Back.BLACK
-        if x == 8192: return Fore.WHITE + Back.BLACK
-    for i in a:
-        for j in i:
-            print color(j) + ("%4d" % j) + Fore.RESET + Back.RESET,
-        print
+def mergeLeftBoard(grid):
+    temp = []
+    for row in grid:
+        row = mergeLeft(row)
+        temp.append(row)
+    return temp
 
-def newEmpty(size):
-    return [[0 for i in range(0, size)] for i in range(0, size)]
+def mergeRightBoard(grid):
+    temp = []
+    for row in grid:
+        tempRow = reverse(row)
+        tempRow = mergeLeft(tempRow)
+        tempRow = reverse(tempRow)
+        temp.append(tempRow)
+    return temp
 
-def isWin(a):
-    return traverse(a, lambda x: x == 2048)
+def mergeUp(grid):
+    temp = transpose(grid)
+    temp = mergeLeftBoard(temp)
+    temp = transpose(temp)
 
-def isFail(a):
-    def aux(a):
-        for i in a:
-            for j in zip(i, i[1:]):
-                if j[0] == 0 or j[1] == 0 or j[0] == j[1]: return False
-        return True
-    return aux(a) and aux(rotate(a))
-    
-def traverse(a, f):
-    for line in a:
-        for ele in line:
-            if f(ele): return True
+    return temp
+
+
+def mergeDown(grid):
+    temp = transpose(grid)
+    temp = mergeRightBoard(temp)
+    temp = transpose(temp)
+
+    return temp
+
+def transpose(grid):
+    transpose = [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+    ]
+    for column in range(0,4):
+        for row in range(0, 4):
+            transpose[row][column] = grid[column][row]
+    return transpose
+
+def keepPlaying(grid):
+    for row in grid:
+        if 2048 in row:
+            print("Well done you've won the game")
+            return False
+        if 0 in row:
+            return True
+    # all filled and no 2048
+    print("Game lost")
     return False
 
-def randomPoint(size):
-    x = random.randint(0, size)
-    y = random.randint(0, size)
-    return (x, y)
+if __name__ == '__main__':
+    # grid = [
+    #     [1024,0,0,0],
+    #     [1024,0,0,0],
+    #     [0,0,0,0],
+    #     [0,0,0,0]
+    # ]
+    grid = [
+        [2,2,2,0],
+        [4,4,4,0],
+        [8,8,8,8],
+        [16,16,16,0]
+    ]
+    display(grid)
+    startGame(grid)
+    display(grid)
+    while(keepPlaying(grid)):
+        merge = input("which way?")
+        if merge == "d":
+            grid = mergeRightBoard(grid)
+            insertValue(grid)
+            display(grid)
+        elif merge =="w":
+            grid = mergeUp(grid)
+            insertValue(grid)
+            display(grid)
+        elif merge == "s":
+            grid = mergeDown(grid)
+            insertValue(grid)
+            display(grid)
+        elif merge == "a":
+            grid = mergeLeftBoard(grid)
+            insertValue(grid)
+            display(grid)
 
-def randomInit(a):
-    seed = [2, 2, 2, 4]
-    x, y = randomPoint(len(a)-1)
-    v = random.randint(0, len(seed)-1)
-    a[x][y] = seed[v]
+    # grid[0] = mergeLeft(grid[0])
+    # grid = mergeLeftBoard(grid)
+    # display(grid)
+    # grid = mergeRightBoard(grid)
+    # display(grid)
+    # grid = mergeUp(grid)
+    # display(grid)
+    # grid = mergeDown(grid)
+    # display(grid)
 
-def randomNum(a):
-    seed = [2, 2, 2, 4]
-    x, y = randomPoint(len(a)-1)
-    if a[x][y] == 0:
-        v = random.randint(0, len(seed)-1)
-        a[x][y] = seed[v]
-    else: randomNum(a)
-
-def newGame(size):
-    print "press w to move up, a to move left, s to move down, d to move right."
-    print "press q to quit."
-    won = False
-    a = newEmpty(size)
-    randomInit(a)
-    randomInit(a)
-    prettyPrint(a)
-    while True:
-        b = copy.deepcopy(a)
-        key = raw_input()
-        if key == "w":   a = reduceUp(a)
-        elif key == "a": a = reduceLeft(a)
-        elif key == "s": a = reduceDown(a)
-        elif key == "d": a = reduceRight(a)
-        elif key == "q": break
-        if a == b: 
-            print "no numbers to be reduce"
-        else: randomNum(a)
-        prettyPrint(a)
-        if isWin(a) and not won:
-            print "You win"
-            won = True
-        elif isFail(a):
-            print "You fail"
-            break
-
-def test():
-    assert reduceLineLeft([4, 4, 4, 4]) == [8, 8, 0, 0]
-    assert reduceLineLeft([0, 0, 0, 0]) == [0, 0, 0, 0]
-    assert reduceLineLeft([2, 0, 2, 0]) == [4, 0, 0, 0]
-    assert reduceLineLeft([2, 0, 0, 2]) == [4, 0, 0, 0]
-    assert reduceLineLeft([2, 2, 0, 2]) == [4, 2, 0, 0]
-    assert reduceLineLeft([4, 0, 2, 2]) == [4, 4, 0, 0]
-    assert reduceLineLeft([2, 0, 2, 2]) == [4, 2, 0, 0]
-    assert reduceLineLeft([2, 2, 8, 8]) == [4, 16, 0, 0]
-    assert reduceLineRight([2, 2, 0, 2]) == [0, 0, 2, 4]
-    assert reduceLineRight([0, 0, 0, 2]) == [0, 0, 0, 2]
-    assert reduceLineRight([2, 0, 0, 2]) == [0, 0, 0, 4]
-    assert reduceLineRight([4, 4, 2, 2]) == [0, 0, 8, 4]
-    assert reduceLineRight([2, 4, 4, 2]) == [0, 2, 8, 2]
-    
-if __name__ == "__main__":
-    newGame(4)
+    # trasposeTest = [
+    #     [1,2,3,4],
+    #     [5,6,7,8],
+    #     [9,10,11,12],
+    #     [13,14,15,16]
+    # ]
+    # display(trasposeTest)
+    # display(transpose(trasposeTest))
